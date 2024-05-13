@@ -1,0 +1,827 @@
+Exp-3: Implementation of scanner by specifying Regular Expressions
+
+ 
+
+#include <stdio.h>
+
+#include <stdlib.h>
+
+#include <regex.h>
+
+ 
+
+#define MAX_MATCHES 10
+
+#define MAX_MATCH_LENGTH 100
+
+ 
+
+int main() {
+
+    // Define the regular expressions for tokens
+
+    regex_t regex_identifier, regex_integer, regex_float;
+
+    regcomp(&regex_identifier, "[a-zA-Z][a-zA-Z0-9_]*", REG_EXTENDED);
+
+    regcomp(&regex_integer, "[0-9]+", REG_EXTENDED);
+
+    regcomp(&regex_float, "[0-9]+\\.[0-9]+", REG_EXTENDED);
+
+ 
+
+    char input[MAX_MATCH_LENGTH];
+
+    printf("Enter input: ");
+
+    fgets(input, sizeof(input), stdin);
+
+ 
+
+    char *current_position = input; // Pointer to current position in input
+
+ 
+
+    // Scan the input and match against the regular expressions
+
+    regmatch_t matches[MAX_MATCHES];
+
+    while (*current_position != '\0') {
+
+        if (regexec(&regex_identifier, current_position, MAX_MATCHES, matches, 0) == 0) {
+
+            printf("Identifier: %.*s\n", (int)(matches[0].rm_eo - matches[0].rm_so), &current_position[matches[0].rm_so]);
+
+        } else if (regexec(&regex_integer, current_position, MAX_MATCHES, matches, 0) == 0) {
+
+            printf("Integer: %.*s\n", (int)(matches[0].rm_eo - matches[0].rm_so), &current_position[matches[0].rm_so]);
+
+        } else if (regexec(&regex_float, current_position, MAX_MATCHES, matches, 0) == 0) {
+
+            printf("Float: %.*s\n", (int)(matches[0].rm_eo - matches[0].rm_so), &current_position[matches[0].rm_so]);
+
+        } else {
+
+            printf("Unexpected token: %c\n", *current_position);
+
+            current_position++;
+
+        }
+
+ 
+
+        // Move to the next token
+
+        current_position += matches[0].rm_eo;
+
+    }
+
+ 
+
+    // Free the compiled regular expressions
+
+    regfree(&regex_identifier);
+
+    regfree(&regex_integer);
+
+    regfree(&regex_float);
+
+ 
+
+    return 0;
+
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp-4: Write a program using BISON.Simple calculator program in bison
+
+Cal.yacc
+
+%{
+
+#include <stdio.h>
+
+int regs[26];  // For storing values for each letter
+
+int base;     // To keep track of the number base
+
+%}
+
+ 
+
+%start list
+
+ 
+
+%union {
+
+    int a;
+
+}
+
+ 
+
+%token DIGIT LETTER
+
+ 
+
+%left '|'
+
+%left '&'
+
+%left '+' '-'
+
+%left '*' '/' '%'
+
+%left UMINUS  // Gives precedence to unary minus
+
+ 
+
+%%
+
+ 
+
+list:  /* empty list */
+
+      | list stat '\n'
+
+      | list error '\n' {
+
+          yyerrok;  // Reset error state
+
+      }
+
+;
+
+ 
+
+stat:  expr {
+
+          printf("%d\n", $1.a);  // Output expression result
+
+      }
+
+    | LETTER '=' expr {
+
+          regs[$1.a] = $3.a;  // Assign value to a letter
+
+      }
+
+;
+
+ 
+
+expr:  '(' expr ')' {
+
+          $$ = $2;  // Parentheses for precedence
+
+      }
+
+    | expr '*' expr {
+
+          $$.a = $1.a * $3.a;
+
+      }
+
+    | expr '/' expr {
+
+          $$.a = $1.a / $3.a;
+
+      }
+
+    | expr '%' expr {
+
+          $$.a = $1.a % $3.a;
+
+      }
+
+    | expr '+' expr {
+
+          $$.a = $1.a + $3.a;
+
+      }
+
+    | expr '-' expr {
+
+          $$.a = $1.a - $3.a;
+
+      }
+
+    | expr '&' expr {
+
+          $$.a = $1.a & $3.a;
+
+      }
+
+    | expr '|' expr {
+
+          $$.a = $1.a | $3.a;
+
+      }
+
+    | '-' expr %prec UMINUS {
+
+          $$.a = -$2.a;  // Unary minus
+
+      }
+
+    | LETTER {
+
+          $$.a = regs[$1.a];
+
+      }
+
+    | number {
+
+          $$.a = $1.a;
+
+      }
+
+;
+
+ 
+
+number:  DIGIT {
+
+          $$ = $1;
+
+          base = ($1.a == 0) ? 8 : 10;  // Determine base
+
+      }
+
+    | number DIGIT {
+
+          $$.a = base * $1.a + $2.a;
+
+      }
+
+;
+
+ 
+
+%%
+
+ 
+
+int main() {
+
+    return yyparse();  // Start parsing
+
+}
+
+ 
+
+void yyerror(const char *s) {
+
+    fprintf(stderr, "%s\n", s);  // Print error messages
+
+}
+
+ 
+
+int yywrap() {
+
+    return 1;  // End of input
+
+}
+
+ 
+
+Calc.Lex
+
+ 
+
+%{
+
+#include <stdio.h>
+
+#include "y.tab.h"
+
+int c;
+
+%}
+
+ 
+
+%%
+
+ 
+
+" " ;  // Ignore whitespace
+
+ 
+
+[a-z] {
+
+    c = yytext[0];
+
+    yylval.a = c - 'a';  // Convert letter to its index
+
+    return LETTER;
+
+}
+
+ 
+
+[0-9] {
+
+    c = yytext[0];
+
+    yylval.a = c - '0';  // Convert digit to its integer value
+
+    return DIGIT;
+
+}
+
+ 
+
+[^a-z0-9] {
+
+    c = yytext[0];  // Return non-alphanumeric characters as is
+
+    return c;
+
+}
+
+ 
+
+%%
+
+ 
+
+Instructions to Compile and Run
+
+Create the Yacc File: Save the formatted Yacc code into a file named calc.yacc.
+
+Create the Lex File: Save the formatted Lex code into a file named calc.lex.
+
+Compile with Yacc and Lex:
+
+Run yacc -d calc.yacc to compile the Yacc code and generate the necessary headers.
+
+Run lex -d calc.lex to compile the Lex code.
+
+Compile with C Compiler:
+
+Compile the generated code with a C compiler, such as gcc. Use the command cc y.tab.c lex.yy.c -o calc, where y.tab.c is the Yacc-generated code and lex.yy.c is the Lex-generated code.
+
+Run the Executable:
+
+Run ./calc to execute the compiled code.
+
+Input your expressions followed by a newline (\n) to evaluate them. You can assign values to letters and perform arithmetic operations as specified in the grammar.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp-5: Write a program for Top-Down Parsing - predictive parsing table (Removalof Left recursion/Left factoring and Compute FIRST & FOLLOW)
+
+ 
+
+import java.util.*;
+
+ 
+
+public class TopDownParser {
+
+    // Method to remove left recursion
+
+    public static List<String> removeLeftRecursion(List<String> grammar) {
+
+        List<String> newGrammar = new ArrayList<>();
+
+        for (String production : grammar) {
+
+            String[] parts = production.split("->");
+
+            String nonTerminal = parts[0].trim();
+
+            String[] alternatives = parts[1].trim().split("\\|");
+
+            List<String> withRecursion = new ArrayList<>();
+
+            List<String> withoutRecursion = new ArrayList<>();
+
+ 
+
+            for (String alt : alternatives) {
+
+                if (alt.trim().startsWith(nonTerminal)) {
+
+                    withRecursion.add(alt.trim().substring(nonTerminal.length()).trim() + " " + nonTerminal + "'");
+
+                } else {
+
+                    withoutRecursion.add(alt.trim() + " " + nonTerminal + "'");
+
+                }
+
+            }
+
+ 
+
+            if (!withRecursion.isEmpty()) {
+
+                String newNonTerminal = nonTerminal + "'";
+
+                newGrammar.add(nonTerminal + " -> " + withoutRecursion.get(0) + " " + newNonTerminal);
+
+                for (String alt : withRecursion) {
+
+                    newGrammar.add(newNonTerminal + " -> " + alt);
+
+                }
+
+            } else {
+
+                newGrammar.add(production);
+
+            }
+
+        }
+
+        return newGrammar;
+
+    }
+
+ 
+
+    // Method to left factor
+
+    public static List<String> leftFactor(List<String> grammar) {
+
+        List<String> newGrammar = new ArrayList<>();
+
+        for (String production : grammar) {
+
+            String[] parts = production.split("->");
+
+            String nonTerminal = parts[0].trim();
+
+            String[] alternatives = parts[1].trim().split("\\|");
+
+ 
+
+            String commonPrefix = findCommonPrefix(alternatives);
+
+ 
+
+            if (!commonPrefix.isEmpty()) {
+
+                String newNonTerminal = nonTerminal + "'";
+
+                newGrammar.add(nonTerminal + " -> " + commonPrefix + " " + newNonTerminal);
+
+ 
+
+                StringBuilder sb = new StringBuilder();
+
+                for (String alt : alternatives) {
+
+                    if (alt.trim().startsWith(commonPrefix)) {
+
+                        sb.append(alt.substring(commonPrefix.length()).trim()).append(" | ");
+
+                    } else {
+
+                        sb.append(alt.trim()).append(" | ");
+
+                    }
+
+                }
+
+                sb.append("e");
+
+                newGrammar.add(newNonTerminal + " -> " + sb.toString().trim());
+
+            } else {
+
+                newGrammar.add(production);
+
+            }
+
+        }
+
+        return newGrammar;
+
+    }
+
+ 
+
+    // Helper function to find common prefix
+
+    private static String findCommonPrefix(String[] alternatives) {
+
+        if (alternatives.length == 0) {
+
+            return "";
+
+        }
+
+ 
+
+        String prefix = alternatives[0].trim();
+
+        for (String alternative : alternatives) {
+
+            while (!alternative.trim().startsWith(prefix) && !prefix.isEmpty()) {
+
+                prefix = prefix.substring(0, prefix.length() - 1);
+
+            }
+
+        }
+
+        return prefix;
+
+    }
+
+ 
+
+    public static void main(String[] args) {
+
+        Map<String, Set<String>> firstSets = new HashMap<>();
+
+        Map<String, Set<String>> followSets = new HashMap<>();
+
+ 
+
+        // Construct FIRST sets
+
+        firstSets.put("S", new HashSet<>());
+
+        firstSets.put("A", new HashSet<>());
+
+        firstSets.get("S").add("a");
+
+        firstSets.get("A").add("a");
+
+        firstSets.get("A").add("e");
+
+ 
+
+        // Construct FOLLOW sets
+
+        followSets.put("S", new HashSet<>());
+
+        followSets.put("A", new HashSet<>());
+
+        followSets.get("S").add("$");
+
+        followSets.get("A").add("$");
+
+        followSets.get("A").add("a");
+
+ 
+
+        // Construct parse table
+
+        Map<String, Map<String, String>> parseTable = new HashMap<>();
+
+        parseTable.put("S", new HashMap<>());
+
+        parseTable.put("A", new HashMap<>());
+
+        parseTable.get("S").put("a", "A");
+
+        parseTable.get("A").put("a", "aA");
+
+        parseTable.get("A").put("$", "e");
+
+ 
+
+        // Print FIRST sets
+
+        System.out.println("FIRST sets:");
+
+        for (Map.Entry<String, Set<String>> entry : firstSets.entrySet()) {
+
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+
+        }
+
+ 
+
+        // Print FOLLOW sets
+
+        System.out.println("\nFOLLOW sets:");
+
+        for (Map.Entry<String, Set<String>> entry : followSets.entrySet()) {
+
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+
+        }
+
+ 
+
+        // Print parse table
+
+        System.out.println("\nParse Table:");
+
+        for (Map.Entry<String, Map<String, String>> entry : parseTable.entrySet()) {
+
+            String nonTerminal = entry.getKey();
+
+            Map<String, String> actions = entry.getValue();
+
+            System.out.println("Non-Terminal: " + nonTerminal);
+
+            System.out.println("Actions: " + actions);
+
+        }
+
+    }
+
+}
+
+ 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp-6
+
+ 
+
+ 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp-8: Write a program to traverse syntax trees and perform action arithmetic
+
+ 
+
+class TreeNode {
+
+    String value;
+
+    TreeNode left;
+
+    TreeNode right;
+
+ 
+
+    TreeNode(String value) {
+
+        this.value = value;
+
+        this.left = null;
+
+        this.right = null;
+
+    }
+
+}
+
+ 
+
+public class SyntaxTreeTraversal {
+
+    public static int traverseAndCalculate(TreeNode node) {
+
+        if (node == null) {
+
+            return 0;
+
+        }
+
+ 
+
+        if (node.left == null && node.right == null) {
+
+            return Integer.parseInt(node.value);
+
+        }
+
+ 
+
+        int leftValue = traverseAndCalculate(node.left);
+
+        int rightValue = traverseAndCalculate(node.right);
+
+ 
+
+        switch (node.value) {
+
+            case "+":
+
+                return leftValue + rightValue;
+
+            case "-":
+
+                return leftValue - rightValue;
+
+            case "*":
+
+                return leftValue * rightValue;
+
+            case "/":
+
+                if (rightValue == 0) {
+
+                    throw new ArithmeticException("Division by zero");
+
+                }
+
+                return leftValue / rightValue;
+
+            default:
+
+                throw new IllegalArgumentException("Invalid operator: " + node.value);
+
+        }
+
+    }
+
+ 
+
+    public static void main(String[] args) {
+
+        // Example syntax tree: 3 + (5 * 2)
+
+        TreeNode root = new TreeNode("+");
+
+        root.left = new TreeNode("3");
+
+        root.right = new TreeNode("*");
+
+        root.right.left = new TreeNode("5");
+
+        root.right.right = new TreeNode("2");
+
+ 
+
+        // Perform traversal and calculation
+
+        int result = traverseAndCalculate(root);
+
+        System.out.println("Result: " + result);
+
+    }
+
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Exp-9: Write an Intermediate code generation for If/While
+
+ 
+
+import java.util.*;
+
+ 
+
+public class CodeGenerationForIf {
+
+    public static void main(String[] args) {
+
+        // Example input: if (x > 5) { y = x * 2; }
+
+        String condition = "x > 5";
+
+        String action = "y = x * 2;";
+
+ 
+
+        // Generate code for the if statement
+
+        String generatedCode = generateIfCode(condition, action);
+
+ 
+
+        System.out.println("Generated code:");
+
+        System.out.println(generatedCode);
+
+    }
+
+ 
+
+    public static String generateIfCode(String condition, String action) {
+
+        StringBuilder codeBuilder = new StringBuilder();
+
+ 
+
+        // Add the if statement
+
+        codeBuilder.append("if (").append(condition).append(") {\n");
+
+ 
+
+        // Add the action inside the if block
+
+        codeBuilder.append("\t").append(action).append("\n");
+
+ 
+
+        // Close the if block
+
+        codeBuilder.append("}");
+
+ 
+
+        return codeBuilder.toString();
+
+    }
+
+}
