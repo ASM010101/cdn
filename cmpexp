@@ -1,3 +1,154 @@
+EXP1:SIMPLE CALCULATOR(JAVA):
+
+
+import java.util.Scanner;
+
+public class SimpleCalculator {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.println("Welcome to Simple Calculator!");
+        System.out.print("Enter the first number: ");
+        double num1 = scanner.nextDouble();
+        
+        System.out.print("Enter the second number: ");
+        double num2 = scanner.nextDouble();
+        
+        System.out.println("Select operation: ");
+        System.out.println("1. Addition (+)");
+        System.out.println("2. Subtraction (-)");
+        System.out.println("3. Multiplication (*)");
+        System.out.println("4. Division (/)");
+        System.out.print("Enter your choice: ");
+        
+        int choice = scanner.nextInt();
+        double result = 0;
+        
+        switch(choice) {
+            case 1:
+                result = num1 + num2;
+                System.out.println("Result: " + result);
+                break;
+            case 2:
+                result = num1 - num2;
+                System.out.println("Result: " + result);
+                break;
+            case 3:
+                result = num1 * num2;
+                System.out.println("Result: " + result);
+                break;
+            case 4:
+                if(num2 == 0) {
+                    System.out.println("Error! Division by zero is not allowed.");
+                } else {
+                    result = num1 / num2;
+                    System.out.println("Result: " + result);
+                }
+                break;
+            default:
+                System.out.println("Invalid choice!");
+        }
+        
+        scanner.close();
+    }
+}
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------
+EXP2.1
+
+/***Exp for number of capital letter present in the given input
+
+/*** Definition Section has one variable
+which can be accessed inside yylex() 
+and main() ***/
+%{
+int count = 0;
+%}
+
+/*** Rule Section has three rules, first rule 
+matches with capital letters, second rule
+matches with any character except newline and 
+third rule does not take input after the enter***/
+%%
+[A-Z] {printf("%s capital letter\n", yytext);
+	count++;}
+.	 {printf("%s not a capital letter\n", yytext);}
+\n {return 0;}
+%%
+
+/*** Code Section prints the number of
+capital letter present in the given input***/
+int yywrap(){}
+int main(){
+
+// Explanation:
+// yywrap() - wraps the above rule section
+/* yyin - takes the file pointer 
+		which contains the input*/
+/* yylex() - this is the main flex function
+		which runs the Rule Section*/
+// yytext is the text in the buffer
+
+// Uncomment the lines below 
+// to take input from file
+// FILE *fp;
+// char filename[50];
+// printf("Enter the filename: \n");
+// scanf("%s",filename);
+// fp = fopen(filename,"r");
+// yyin = fp;
+
+yylex();
+printf("\nNumber of Capital letters "
+	"in the given input - %d\n", count);
+
+return 0;
+}
+-------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------
+EXP:2.2
+/*** To count the number of lines,charcters ***/ 
+
+/* Declaring two counters one for number 
+of lines other for number of characters */
+%{
+int no_of_lines = 0;
+int no_of_chars = 0;
+%}
+
+/***rule 1 counts the number of lines, 
+rule 2 counts the number of characters 
+and rule 3 specifies when to stop 
+taking input***/
+%%
+\n	 ++no_of_lines;
+.	 ++no_of_chars;
+end	 return 0;
+%%
+
+/*** User code section***/
+int yywrap(){}
+int main(int argc, char **argv)
+{
+
+yylex();
+printf("number of lines = %d, number of chars = %d\n",
+	no_of_lines, no_of_chars );
+
+return 0;
+}
+
+
+
+
+
+----------------------------------------------------------------------------------------
+---------------------------------
+
+
 Exp-3: Implementation of scanner by specifying Regular Expressions
 
  
@@ -635,10 +786,182 @@ public class TopDownParser {
 }
 
  
-
+----------------------------------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Exp-6
+Exp-6 SLR PARSER
+import java.util.*;
+class SLRParser {
+private final List<String> grammar;
+private final Map<Integer, Map<String, String>> actionTable;
+private final Map<Integer, Map<String, Integer>> goToTable;
+private final Stack<Integer> stateStack;
+private final Stack<String> symbolStack;
+private final List<String> input;
+public SLRParser(List<String> grammar, Map<Integer, Map<String, String>>
+actionTable, Map<Integer, Map<String, Integer>> goToTable, List<String> input)
+{
+this.grammar = grammar;
+this.actionTable = actionTable;
+this.goToTable = goToTable;
+this.input = input;
+this.stateStack = new Stack<>();
+this.symbolStack = new Stack<>();
+}
+public boolean parse() {
+stateStack.push(0);
+int inputIndex = 0;
+while (inputIndex < input.size()) {
+int currentState = stateStack.peek();
+
+25
+
+String currentSymbol = input.get(inputIndex);
+if (actionTable.containsKey(currentState) &&
+actionTable.get(currentState).containsKey(currentSymbol)) {
+String action = actionTable.get(currentState).get(currentSymbol);
+if (action.startsWith("s")) {
+int nextState = Integer.parseInt(action.substring(1));
+stateStack.push(nextState);
+symbolStack.push(currentSymbol);
+inputIndex++;
+} else if (action.startsWith("r")) {
+int productionIndex = Integer.parseInt(action.substring(1));
+String production = grammar.get(productionIndex);
+String[] parts = production.split("->");
+String leftPart = parts[0].trim();
+String rightPart = parts[1].trim();
+int len = rightPart.split(" ").length;
+for (int i = 0; i < len; i++) {
+stateStack.pop();
+symbolStack.pop();
+}
+currentState = stateStack.peek();
+String nonTerminal = leftPart;
+stateStack.push(goToTable.get(currentState).get(nonTerminal));
+symbolStack.push(nonTerminal);
+} else if (action.equals("accept")) {
+return true;
+}
+} else {
+// No valid action in action table, parsing fails
+return false;
+}
+}
+// No more input symbols, parsing fails
+return false;
+}
+}
+public class Main {
+public static void main(String[] args) {
+// Example grammar
+List<String> grammar = Arrays.asList(
+
+26
+
+"S -> E",
+"E -> E + T",
+"E -> T",
+"T -> id"
+);
+// Example action table
+Map<Integer, Map<String, String>> actionTable = new HashMap<>();
+Map<String, String> action0 = new HashMap<>();
+action0.put("id", "s3");
+actionTable.put(0, action0);
+Map<String, String> action1 = new HashMap<>();
+action1.put("+", "s4");
+actionTable.put(1, action1);
+Map<String, String> action3 = new HashMap<>();
+action3.put("$", "accept");
+actionTable.put(3, action3);
+Map<String, String> action4 = new HashMap<>();
+action4.put("id", "s3");
+actionTable.put(4, action4);
+// Example go-to table
+Map<Integer, Map<String, Integer>> goToTable = new HashMap<>();
+Map<String, Integer> goTo0 = new HashMap<>();
+goTo0.put("E", 1);
+goToTable.put(0, goTo0);
+Map<String, Integer> goTo1 = new HashMap<>();
+goTo1.put("T", 2);
+goToTable.put(1, goTo1);
+// Example input
+List<String> input = Arrays.asList("id", "+", "id", "$");
+SLRParser parser = new SLRParser(grammar, actionTable, goToTable, input);
+boolean result = parser.parse();
+if (result) {
+System.out.println("Input string accepted by grammar.");
+} else {
+System.out.println("Input string rejected by grammar.");
+}
+}
+}
+
+
+OUTPUT:
+Enter input word: id*id
+The string is accepted
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+EXP 7:
+import java.util.Scanner;
+
+public class Fibonacci {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter the number of terms in the Fibonacci series: ");
+        int n = scanner.nextInt();
+
+        int a = 0, b = 1;
+        System.out.println("Fibonacci Series up to " + n + " terms:");
+        for (int i = 0; i < n; i++) {
+            System.out.print(a + " ");
+            int temp = a + b;
+            a = b;
+            b = temp;
+        }
+
+        scanner.close();
+    }
+}
+
+
+
+
+
+
+
+import java.util.Scanner;
+
+public class PalindromeCheck {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter a number to check if it is a palindrome: ");
+        int number = scanner.nextInt();
+
+        int originalNumber = number;
+        int reverseNumber = 0;
+        while (number != 0) {
+            int remainder = number % 10;
+            reverseNumber = reverseNumber * 10 + remainder;
+            number /= 10;
+        }
+
+        if (originalNumber == reverseNumber) {
+            System.out.println(originalNumber + " is a palindrome.");
+        } else {
+            System.out.println(originalNumber + " is not a palindrome.");
+        }
+
+        scanner.close();
+    }
+}
+
 
  
 
@@ -825,3 +1148,42 @@ public class CodeGenerationForIf {
     }
 
 }
+------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------
+EXP 10:
+To learn the basics of MIPS Assembly Language
+Introduction:
+• MIPS (Million Instructions Per Second) is a RISC (Reduced Instruction Set
+Computer)instruction set architecture developed by MIPS Technologies in the late
+1980s.
+• It is a loadstore architecture, meaning that data must be loaded into registers before
+it can be processed. MIPS is known for its simplicity, efficiency, and high
+performance.
+• It has been widely used in embedded systems, networking equipment, andother
+applications where performance and power consumption are critical.
+Procedure:
+Step 1: get value for register $a0
+Step 2: get value for register $a1
+Step 3: add values in $a0 and $a1
+Step 4: store result in register $v0
+Step 5: print value in register $v0
+Sample Code:
+.data
+num1: .word 10
+num2: .word 5
+.text
+main:
+# load num1 into $a0
+lw $a0, num1
+# load num2 into $a1
+lw $a1, num2
+# add num1 and num2
+add $v0, $a0, $a1
+# print result
+li $v0, 1 # syscall code for print_int
+syscall
+# exit program
+li $v0, 10 # syscall code for exit
+syscall
+
+Output: 15
